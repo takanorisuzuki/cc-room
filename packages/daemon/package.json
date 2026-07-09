@@ -1,0 +1,42 @@
+{
+  "name": "@cc-room/daemon",
+  "version": "0.2.0",
+  "description": "cc-room background daemon — LAN context sharing for Claude Code teams",
+  "license": "MIT",
+  "author": "Takanori Suzuki",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/takanorisuzuki/cc-room.git",
+    "directory": "packages/daemon"
+  },
+  "type": "module",
+  "bin": {
+    "cc-room-daemon": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "dev": "tsup src/index.ts --format esm --watch --onSuccess 'node dist/index.js'",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "@cc-room/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "chokidar": "^4.0.0",
+    "multicast-dns": "^7.2.5",
+    "pino": "^9.2.0",
+    "pino-pretty": "^11.2.0",
+    "ws": "^8.17.0",
+    "yaml": "^2.4.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@cc-room/test-utils": "workspace:*",
+    "@types/multicast-dns": "^7.2.4",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.5.0",
+    "tsup": "^8.1.0"
+  }
+}

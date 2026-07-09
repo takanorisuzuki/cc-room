@@ -1,0 +1,28 @@
+{
+  "name": "cc-room",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Your Claude Code sessions, connected. Context and artifacts flow between teammates automatically.",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "dev": "pnpm -r --parallel run dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "eslint packages/*/src/**/*.ts",
+    "clean": "pnpm -r run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "eslint": "^9.5.0",
+    "prettier": "^3.3.0",
+    "tsup": "^8.1.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.4.0"
+}

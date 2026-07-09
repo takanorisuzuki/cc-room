@@ -1,0 +1,31 @@
+{
+  "name": "@cc-room/shared",
+  "version": "0.2.0",
+  "description": "Shared types, constants, and crypto utilities for cc-room",
+  "license": "MIT",
+  "author": "Takanori Suzuki",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/takanorisuzuki/cc-room.git",
+    "directory": "packages/shared"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsup": "^8.1.0"
+  }
+}
