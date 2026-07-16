@@ -73,6 +73,14 @@ export class Summarizer {
           ? (error.headers as Record<string, string>)
           : undefined;
 
+        // 認証失敗はリトライしても通らないので即フォールバック
+        if (status === 401 || status === 403) {
+          log.warn({ err, status }, "Auth failed, entering fallback mode");
+          this.fallbackMode = true;
+          this.fallbackUntil = Date.now() + SUMMARIZER_FALLBACK_DURATION_MS;
+          return this.localFallbackSummary(turns);
+        }
+
         if (attempt === SUMMARIZER_MAX_RETRIES) {
           log.warn({ err }, "All retries exhausted, entering fallback mode");
           this.fallbackMode = true;
