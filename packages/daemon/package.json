@@ -16,9 +16,10 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
+    "build:bundle": "tsup --config tsup.bundle.config.ts",
     "dev": "tsup src/index.ts --format esm --watch --onSuccess 'node dist/index.js'",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist dist-bundle"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

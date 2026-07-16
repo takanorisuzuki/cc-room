@@ -42,7 +42,7 @@ async function main() {
       部屋名と PIN は自分で相手に伝えてください。
 
   接続後は同じ WiFi（LAN）内にいる必要があります。
-  リモートワーク時は Tailscale などの VPN をご利用ください。
+  （VPN で同一 LAN 相当になればリモートでも使えます）
 
   ドキュメント: https://github.com/takanorisuzuki/cc-room
 `);

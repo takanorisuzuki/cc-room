@@ -13,12 +13,14 @@ import { fileURLToPath } from "node:url";
 import { stringify } from "yaml";
 import { mergeSettings } from "./settings-merger.js";
 import { registerService } from "./register-service.js";
+import { DAEMON_MISSING_HINT, resolveDaemonSource } from "./daemon-resolver.js";
 
 const CC_ROOM_DIR = join(homedir(), ".cc-room");
 const BIN_DIR = join(CC_ROOM_DIR, "bin");
 const CONFIG_PATH = join(CC_ROOM_DIR, "config.yaml");
 const COMMANDS_DIR = join(homedir(), ".claude", "commands");
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
+const SETUP_PACKAGE_ROOT = join(THIS_DIR, "..");
 
 function getGitUserName(): string {
   try {
@@ -28,23 +30,11 @@ function getGitUserName(): string {
   }
 }
 
-function findDaemonBin(): string | null {
-  const candidates = [
-    join(THIS_DIR, "..", "vendor", "daemon", "dist", "index.js"),
-    join(THIS_DIR, "..", "..", "daemon", "dist", "index.js"),
-    join(THIS_DIR, "..", "..", "..", "node_modules", "@cc-room", "daemon", "dist", "index.js"),
-  ];
-  for (const c of candidates) {
-    if (existsSync(c)) return c;
-  }
-  return null;
-}
-
 export async function install(): Promise<void> {
   console.log("  [1/5] ~/.cc-room/bin/ のセットアップ...");
   mkdirSync(BIN_DIR, { recursive: true });
 
-  const daemonSrc = findDaemonBin();
+  const daemonSrc = resolveDaemonSource(SETUP_PACKAGE_ROOT);
   const daemonDest = join(BIN_DIR, "cc-room-daemon");
 
   if (daemonSrc) {
@@ -56,7 +46,7 @@ export async function install(): Promise<void> {
     if (globalBin.status === 0) {
       console.log(`         グローバルインストール確認済み: ${globalBin.stdout.trim()}`);
     } else {
-      console.log("  \x1b[33m⚠ cc-room-daemon バイナリが見つかりません。npm install -g @cc-room/daemon でインストールしてください。\x1b[0m");
+      console.log(`  \x1b[33m⚠ ${DAEMON_MISSING_HINT}\x1b[0m`);
     }
   }
 
