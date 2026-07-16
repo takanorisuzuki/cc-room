@@ -2,8 +2,9 @@ import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir, platform } from "node:os";
 import { execFileSync } from "node:child_process";
+import { resolveCcRoomDir } from "./paths.js";
 
-const CC_ROOM_DIR = join(homedir(), ".cc-room");
+const CC_ROOM_DIR = resolveCcRoomDir();
 
 function getDaemonBinPath(): string {
   // インストール済みの場合はグローバルバイナリ
@@ -14,6 +15,13 @@ function getDaemonBinPath(): string {
     // ignore
   }
   return join(CC_ROOM_DIR, "bin", "cc-room-daemon");
+}
+
+function ccRoomHomeEnvXml(): string {
+  if (!process.env.CC_ROOM_HOME) return "";
+  return `
+    <key>CC_ROOM_HOME</key>
+    <string>${process.env.CC_ROOM_HOME}</string>`;
 }
 
 function registerLaunchd(): void {
@@ -46,7 +54,7 @@ function registerLaunchd(): void {
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
-    <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+    <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>${ccRoomHomeEnvXml()}
   </dict>
 </dict>
 </plist>
@@ -80,6 +88,10 @@ function registerSystemd(): void {
   mkdirSync(join(CC_ROOM_DIR, "logs"), { recursive: true });
   mkdirSync(serviceDir, { recursive: true });
 
+  const envLine = process.env.CC_ROOM_HOME
+    ? `Environment=CC_ROOM_HOME=${process.env.CC_ROOM_HOME}\n`
+    : "";
+
   const unit = `[Unit]
 Description=cc-room daemon
 After=network.target
@@ -88,7 +100,7 @@ After=network.target
 ExecStart=${daemonBin}
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:${logPath}
+${envLine}StandardOutput=append:${logPath}
 StandardError=append:${logPath}
 
 [Install]

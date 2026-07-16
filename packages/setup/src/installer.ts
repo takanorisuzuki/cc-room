@@ -14,8 +14,9 @@ import { stringify } from "yaml";
 import { mergeSettings } from "./settings-merger.js";
 import { registerService } from "./register-service.js";
 import { DAEMON_MISSING_HINT, resolveDaemonSource } from "./daemon-resolver.js";
+import { resolveCcRoomDir } from "./paths.js";
 
-const CC_ROOM_DIR = join(homedir(), ".cc-room");
+const CC_ROOM_DIR = resolveCcRoomDir();
 const BIN_DIR = join(CC_ROOM_DIR, "bin");
 const CONFIG_PATH = join(CC_ROOM_DIR, "config.yaml");
 const COMMANDS_DIR = join(homedir(), ".claude", "commands");
@@ -31,7 +32,7 @@ function getGitUserName(): string {
 }
 
 export async function install(): Promise<void> {
-  console.log("  [1/5] ~/.cc-room/bin/ のセットアップ...");
+  console.log(`  [1/5] ${CC_ROOM_DIR}/bin/ のセットアップ...`);
   mkdirSync(BIN_DIR, { recursive: true });
 
   const daemonSrc = resolveDaemonSource(SETUP_PACKAGE_ROOT);
@@ -50,7 +51,7 @@ export async function install(): Promise<void> {
     }
   }
 
-  console.log("  [2/5] ~/.cc-room/config.yaml の生成...");
+  console.log(`  [2/5] ${CONFIG_PATH} の生成...`);
   if (!existsSync(CONFIG_PATH)) {
     const identity = getGitUserName();
     const config = {
