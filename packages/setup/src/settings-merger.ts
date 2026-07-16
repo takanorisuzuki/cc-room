@@ -84,3 +84,49 @@ export function mergeSettings(): void {
   writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n", { mode: 0o644 });
   console.log(`         ${SETTINGS_PATH} を更新しました`);
 }
+
+/** settings.json から cc-room の hooks / mcpServers を除去（他設定は保持） */
+export function stripCcRoomFromSettings(
+  settings: Record<string, unknown>,
+): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...settings };
+
+  const existingHooks = (settings.hooks as Record<string, unknown[]> | undefined) ?? {};
+  const strippedHooks: Record<string, unknown[]> = {};
+  for (const [event, entries] of Object.entries(existingHooks)) {
+    strippedHooks[event] = (entries ?? []).filter((e) => {
+      const entry = e as { hooks?: Array<{ command?: string }> };
+      return !entry.hooks?.some((h) => h.command?.startsWith("cc-room-daemon hook"));
+    });
+  }
+  if (Object.keys(existingHooks).length > 0 || Object.keys(strippedHooks).length > 0) {
+    next.hooks = strippedHooks;
+  }
+
+  const existingMcp = (settings.mcpServers as Record<string, unknown> | undefined) ?? {};
+  if (Object.keys(existingMcp).length > 0) {
+    const { ["cc-room"]: _removed, ...rest } = existingMcp;
+    next.mcpServers = rest;
+  }
+
+  return next;
+}
+
+export function unmergeSettings(): void {
+  if (!existsSync(SETTINGS_PATH)) {
+    console.log(`         スキップ: ${SETTINGS_PATH} は存在しません`);
+    return;
+  }
+
+  let settings: Record<string, unknown>;
+  try {
+    settings = JSON.parse(readFileSync(SETTINGS_PATH, "utf-8")) as Record<string, unknown>;
+  } catch {
+    console.log("  \x1b[33m⚠ settings.json のパースに失敗したため、hooks/MCP の除去をスキップします。\x1b[0m");
+    return;
+  }
+
+  const next = stripCcRoomFromSettings(settings);
+  writeFileSync(SETTINGS_PATH, JSON.stringify(next, null, 2) + "\n", { mode: 0o644 });
+  console.log(`         ${SETTINGS_PATH} から cc-room を除去しました`);
+}

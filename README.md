@@ -48,6 +48,14 @@ Claude Code を開き:
 
 これでホワイトボードが同期される。
 
+### アンインストール
+
+```bash
+npx setup-cc-room uninstall
+```
+
+daemon（launchd/systemd）、slash commands、`settings.json` の cc-room 設定、`~/.cc-room` を削除します。その後 Claude Code を再起動してください。
+
 開発者向け（ソースから）:
 
 ```bash
@@ -55,6 +63,7 @@ git clone https://github.com/takanorisuzuki/cc-room.git
 cd cc-room && pnpm install && pnpm build
 pnpm --filter setup-cc-room run pack:vendor
 node packages/setup/dist/index.js
+# アンインストール: node packages/setup/dist/index.js uninstall
 ```
 
 ---

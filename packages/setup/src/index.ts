@@ -2,9 +2,23 @@
 
 import { validateAll, printResults } from "./validators.js";
 import { install } from "./installer.js";
+import { uninstall } from "./uninstaller.js";
 
-async function main() {
-  console.log("\n  🏠 setup-cc-room v0.2.0\n");
+const VERSION = "0.2.1";
+
+function printHelp(): void {
+  console.log(`
+  🏠 setup-cc-room v${VERSION}
+
+  Usage:
+    npx setup-cc-room           Install cc-room
+    npx setup-cc-room uninstall Remove cc-room (daemon, hooks, data)
+    npx setup-cc-room --help    Show this help
+`);
+}
+
+async function runInstall(): Promise<void> {
+  console.log(`\n  🏠 setup-cc-room v${VERSION}\n`);
 
   console.log("  Preflight checks を実行中...");
   const { passed, results } = validateAll();
@@ -44,8 +58,38 @@ async function main() {
   接続後は同じ WiFi（LAN）内にいる必要があります。
   （VPN で同一 LAN 相当になればリモートでも使えます）
 
+  アンインストール: npx setup-cc-room uninstall
+
   ドキュメント: https://github.com/takanorisuzuki/cc-room
 `);
+}
+
+async function runUninstall(): Promise<void> {
+  console.log(`\n  🏠 setup-cc-room v${VERSION} — uninstall\n`);
+  await uninstall();
+  console.log(`
+  \x1b[32m✅ アンインストールが完了しました。\x1b[0m
+
+  Claude Code を再起動してください（hooks / MCP の反映）。
+`);
+}
+
+async function main(): Promise<void> {
+  const arg = process.argv[2];
+  if (arg === "--help" || arg === "-h" || arg === "help") {
+    printHelp();
+    return;
+  }
+  if (arg === "uninstall" || arg === "--uninstall") {
+    await runUninstall();
+    return;
+  }
+  if (arg && arg !== "install") {
+    console.error(`  不明な引数: ${arg}`);
+    printHelp();
+    process.exit(1);
+  }
+  await runInstall();
 }
 
 main().catch((err) => {
