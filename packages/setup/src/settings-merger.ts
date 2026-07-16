@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, copyFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { t } from "./i18n.js";
 
 const SETTINGS_PATH = join(homedir(), ".claude", "settings.json");
 
@@ -54,7 +55,7 @@ export function mergeSettings(): void {
     try {
       settings = JSON.parse(readFileSync(SETTINGS_PATH, "utf-8")) as Record<string, unknown>;
     } catch {
-      console.log("  \x1b[33m⚠ settings.json のパースに失敗しました。バックアップを作成して上書きします。\x1b[0m");
+      console.log(t("settings.parse_fail_backup"));
       copyFileSync(SETTINGS_PATH, SETTINGS_PATH + ".backup");
       settings = {};
     }
@@ -82,7 +83,7 @@ export function mergeSettings(): void {
   settings.mcpServers = mergedMcp;
 
   writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n", { mode: 0o644 });
-  console.log(`         ${SETTINGS_PATH} を更新しました`);
+  console.log(t("settings.updated", { path: SETTINGS_PATH }));
 }
 
 /** settings.json から cc-room の hooks / mcpServers を除去（他設定は保持） */
@@ -114,7 +115,7 @@ export function stripCcRoomFromSettings(
 
 export function unmergeSettings(): void {
   if (!existsSync(SETTINGS_PATH)) {
-    console.log(`         スキップ: ${SETTINGS_PATH} は存在しません`);
+    console.log(t("settings.skip_missing", { path: SETTINGS_PATH }));
     return;
   }
 
@@ -122,11 +123,11 @@ export function unmergeSettings(): void {
   try {
     settings = JSON.parse(readFileSync(SETTINGS_PATH, "utf-8")) as Record<string, unknown>;
   } catch {
-    console.log("  \x1b[33m⚠ settings.json のパースに失敗したため、hooks/MCP の除去をスキップします。\x1b[0m");
+    console.log(t("settings.parse_fail_skip"));
     return;
   }
 
   const next = stripCcRoomFromSettings(settings);
   writeFileSync(SETTINGS_PATH, JSON.stringify(next, null, 2) + "\n", { mode: 0o644 });
-  console.log(`         ${SETTINGS_PATH} から cc-room を除去しました`);
+  console.log(t("settings.stripped", { path: SETTINGS_PATH }));
 }

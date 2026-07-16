@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * setup-cc-room 配布用に daemon（単一バンドル）と slash commands を vendor/ へ同梱する。
+ * Bundle daemon + localized slash commands into packages/setup/vendor for npm publish.
  */
 import { spawnSync } from "node:child_process";
 import {
@@ -48,6 +48,18 @@ function normalizeShebang(filePath) {
   chmodSync(filePath, 0o755);
 }
 
+function copyLocaleCommands(locale) {
+  const srcDir = join(COMMANDS_SRC, locale);
+  const destDir = join(VENDOR, "commands", "room", locale);
+  mkdirSync(destDir, { recursive: true });
+  for (const name of ["room.md", "private.md", "show.md"]) {
+    const src = join(srcDir, name);
+    if (!existsSync(src)) throw new Error(`Command missing: ${src}`);
+    copyFileSync(src, join(destDir, name));
+  }
+  console.log(`  commands/${locale} -> ${destDir}`);
+}
+
 function main() {
   console.log("pack-vendor: building daemon bundle...");
   run("pnpm", ["exec", "tsup", "--config", "tsup.bundle.config.ts"], DAEMON_PKG);
@@ -65,14 +77,8 @@ function main() {
   normalizeShebang(daemonDest);
   console.log(`  daemon -> ${daemonDest}`);
 
-  const cmdDestDir = join(VENDOR, "commands", "room");
-  mkdirSync(cmdDestDir, { recursive: true });
-  for (const name of ["room.md", "private.md", "show.md"]) {
-    const src = join(COMMANDS_SRC, name);
-    if (!existsSync(src)) throw new Error(`Command missing: ${src}`);
-    copyFileSync(src, join(cmdDestDir, name));
-  }
-  console.log(`  commands -> ${cmdDestDir}`);
+  copyLocaleCommands("en");
+  copyLocaleCommands("ja");
   console.log("pack-vendor: done");
 }
 

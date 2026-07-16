@@ -63,7 +63,7 @@ MCP tools: `room_status()`, `room_context()`, `room_messages()`, `room_files()`,
 ### slash commands（`packages/commands/`）
 
 `.claude/commands/` 配下の Markdown ファイル。3コマンド:
-- `/room` — 部屋の管理: open, join, leave, switch, ステータス表示, remember（v0.3+ チームメモリ: `dream status|objection|hold|revert|mine`, `config dream` — 詳細は [packages/commands/room/room.md](packages/commands/room/room.md)）
+- `/room` — 部屋の管理: open, join, leave, switch, ステータス表示, remember（v0.3+ チームメモリ: `dream status|objection|hold|revert|mine`, `config dream` — 詳細は [packages/commands/room/ja/room.md](packages/commands/room/ja/room.md) / [en](packages/commands/room/en/room.md)）
 - `/private` — 手元/公開: on, off, share, drop
 - `/show` — 明示共有のみ: メッセージ投稿, スキル共有（トグルは非推奨 → `/private`）
 

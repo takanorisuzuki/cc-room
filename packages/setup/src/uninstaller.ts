@@ -9,6 +9,7 @@ import { homedir, platform } from "node:os";
 import { execFileSync, spawnSync } from "node:child_process";
 import { resolveCcRoomDir } from "./paths.js";
 import { unmergeSettings } from "./settings-merger.js";
+import { t } from "./i18n.js";
 
 const COMMAND_FILES = ["room.md", "private.md", "show.md"] as const;
 
@@ -22,7 +23,7 @@ export function getSystemdUnitPath(home = homedir()): string {
 
 export function stopLaunchd(plistPath: string): void {
   if (!existsSync(plistPath)) {
-    console.log("         launchd: 未登録");
+    console.log(t("un.launchd_none"));
     return;
   }
   try {
@@ -32,10 +33,10 @@ export function stopLaunchd(plistPath: string): void {
   }
   try {
     unlinkSync(plistPath);
-    console.log(`         launchd を解除: ${plistPath}`);
+    console.log(t("un.launchd_ok", { path: plistPath }));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.log(`  \x1b[33m⚠ plist 削除に失敗: ${msg}\x1b[0m`);
+    console.log(t("un.plist_fail", { msg }));
   }
 }
 
@@ -48,13 +49,13 @@ export function stopSystemd(unitPath: string): void {
   if (existsSync(unitPath)) {
     try {
       unlinkSync(unitPath);
-      console.log(`         systemd を解除: ${unitPath}`);
+      console.log(t("un.systemd_ok", { path: unitPath }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.log(`  \x1b[33m⚠ unit 削除に失敗: ${msg}\x1b[0m`);
+      console.log(t("un.unit_fail", { msg }));
     }
   } else {
-    console.log("         systemd: 未登録");
+    console.log(t("un.systemd_none"));
   }
   try {
     execFileSync("systemctl", ["--user", "daemon-reload"], { stdio: "pipe" });
@@ -73,16 +74,16 @@ export function removeCommandFiles(commandsDir: string): void {
       removed++;
     }
   }
-  console.log(`         コマンドファイルを ${removed} 件削除 (${commandsDir})`);
+  console.log(t("un.commands_ok", { count: removed, dir: commandsDir }));
 }
 
 export function removeCcRoomData(ccRoomDir: string): void {
   if (!existsSync(ccRoomDir)) {
-    console.log(`         スキップ: ${ccRoomDir} は存在しません`);
+    console.log(t("un.data_skip", { dir: ccRoomDir }));
     return;
   }
   rmSync(ccRoomDir, { recursive: true, force: true });
-  console.log(`         削除: ${ccRoomDir}`);
+  console.log(t("un.data_ok", { dir: ccRoomDir }));
 }
 
 export function stopOrphanDaemon(): void {
@@ -94,22 +95,22 @@ export async function uninstall(): Promise<void> {
   const commandsDir = join(homedir(), ".claude", "commands");
   const os = platform();
 
-  console.log("  [1/4] OS サービスを停止...");
+  console.log(t("un.step1"));
   if (os === "darwin") {
     stopLaunchd(getLaunchdPlistPath());
   } else if (os === "linux") {
     stopSystemd(getSystemdUnitPath());
   } else {
-    console.log(`         ${os}: 自動起動の解除は手動で行ってください`);
+    console.log(t("un.os_manual", { os }));
   }
   stopOrphanDaemon();
 
-  console.log("  [2/4] Slash commands を削除...");
+  console.log(t("un.step2"));
   removeCommandFiles(commandsDir);
 
-  console.log("  [3/4] .claude/settings.json から cc-room を除去...");
+  console.log(t("un.step3"));
   unmergeSettings();
 
-  console.log("  [4/4] データディレクトリを削除...");
+  console.log(t("un.step4"));
   removeCcRoomData(ccRoomDir);
 }

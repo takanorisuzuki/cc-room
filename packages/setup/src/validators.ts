@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, accessSync, constants } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { t } from "./i18n.js";
 
 interface ValidationResult {
   ok: boolean;
@@ -44,20 +45,20 @@ function checkNodeVersion(): ValidationResult {
   }
   return {
     ok: false,
-    message: `Node.js ${process.versions.node} (20+ が必要)`,
-    hint: "Node.js 20 以上にアップグレードしてください: https://nodejs.org/",
+    message: t("val.node_bad", { version: process.versions.node }),
+    hint: t("val.node_hint"),
   };
 }
 
 function checkClaudeCodeInstalled(): ValidationResult {
   try {
     execFileSync("claude", ["--version"], { encoding: "utf-8", stdio: "pipe" });
-    return { ok: true, message: "Claude Code がインストール済み" };
+    return { ok: true, message: t("val.claude_ok") };
   } catch {
     return {
       ok: false,
-      message: "Claude Code が見つかりません",
-      hint: "Claude Code をインストールしてください: https://claude.ai/code",
+      message: t("val.claude_missing"),
+      hint: t("val.claude_hint"),
     };
   }
 }
@@ -65,12 +66,12 @@ function checkClaudeCodeInstalled(): ValidationResult {
 function checkClaudeDir(): ValidationResult {
   const claudeDir = join(homedir(), ".claude");
   if (existsSync(claudeDir)) {
-    return { ok: true, message: "~/.claude/ ディレクトリが存在" };
+    return { ok: true, message: t("val.claude_dir_ok") };
   }
   return {
     ok: false,
-    message: "~/.claude/ が見つかりません",
-    hint: "Claude Code を一度起動してセッションを作成してください",
+    message: t("val.claude_dir_missing"),
+    hint: t("val.claude_dir_hint"),
   };
 }
 
@@ -81,24 +82,24 @@ function checkSettingsWritable(): ValidationResult {
   if (existsSync(settingsPath)) {
     try {
       accessSync(settingsPath, constants.W_OK);
-      return { ok: true, message: "settings.json に書き込み可能" };
+      return { ok: true, message: t("val.settings_writable") };
     } catch {
       return {
         ok: false,
-        message: "settings.json に書き込み権限がありません",
-        hint: `chmod 644 ${settingsPath} を実行してください`,
+        message: t("val.settings_not_writable"),
+        hint: t("val.settings_chmod", { path: settingsPath }),
       };
     }
   }
 
   try {
     accessSync(settingsDir, constants.W_OK);
-    return { ok: true, message: "settings.json を作成可能" };
+    return { ok: true, message: t("val.settings_creatable") };
   } catch {
     return {
       ok: false,
-      message: "~/.claude/ に書き込み権限がありません",
-      hint: `chmod 755 ${settingsDir} を実行してください`,
+      message: t("val.claude_dir_not_writable"),
+      hint: t("val.claude_dir_chmod", { path: settingsDir }),
     };
   }
 }
@@ -106,7 +107,7 @@ function checkSettingsWritable(): ValidationResult {
 function checkHooksNotDisabled(): ValidationResult {
   const settingsPath = join(homedir(), ".claude", "settings.json");
   if (!existsSync(settingsPath)) {
-    return { ok: true, message: "Hooks: 制限なし（settings.json 未作成）" };
+    return { ok: true, message: t("val.hooks_unset") };
   }
 
   try {
@@ -114,21 +115,20 @@ function checkHooksNotDisabled(): ValidationResult {
     if (settings.hooks === false || settings.disableHooks === true) {
       return {
         ok: false,
-        message: "Hooks が無効化されています",
-        hint:
-          "cc-room はファイル共有に PostToolUse hook を使用します。settings.json から hooks の無効化設定を削除してください",
+        message: t("val.hooks_disabled"),
+        hint: t("val.hooks_disabled_hint"),
       };
     }
-    return { ok: true, message: "Hooks: 有効" };
+    return { ok: true, message: t("val.hooks_ok") };
   } catch {
-    return { ok: true, message: "Hooks: 制限なし" };
+    return { ok: true, message: t("val.hooks_unrestricted") };
   }
 }
 
 function checkMcpNotBlocked(): ValidationResult {
   const settingsPath = join(homedir(), ".claude", "settings.json");
   if (!existsSync(settingsPath)) {
-    return { ok: true, message: "MCP Server: 登録可能" };
+    return { ok: true, message: t("val.mcp_ok") };
   }
 
   try {
@@ -136,25 +136,24 @@ function checkMcpNotBlocked(): ValidationResult {
     if (settings.mcpServers === false || settings.disableMcp === true) {
       return {
         ok: false,
-        message: "MCP Server の登録が無効化されています",
-        hint:
-          "cc-room は MCP Server 経由で Claude Code と連携します。settings.json から MCP の無効化設定を削除してください",
+        message: t("val.mcp_disabled"),
+        hint: t("val.mcp_disabled_hint"),
       };
     }
-    return { ok: true, message: "MCP Server: 登録可能" };
+    return { ok: true, message: t("val.mcp_ok") };
   } catch {
-    return { ok: true, message: "MCP Server: 登録可能" };
+    return { ok: true, message: t("val.mcp_ok") };
   }
 }
 
 function checkSessionDir(): ValidationResult {
   const projectsDir = join(homedir(), ".claude", "projects");
   if (existsSync(projectsDir)) {
-    return { ok: true, message: "セッションディレクトリが存在" };
+    return { ok: true, message: t("val.session_ok") };
   }
   return {
     ok: true,
-    message: "セッションディレクトリ未作成（初回セッション後に生成される）",
+    message: t("val.session_pending"),
   };
 }
 
@@ -165,18 +164,18 @@ function checkGitUser(): ValidationResult {
       stdio: "pipe",
     }).trim();
     if (name) {
-      return { ok: true, message: `Git ユーザー: ${name}` };
+      return { ok: true, message: t("val.git_ok", { name }) };
     }
     return {
       ok: false,
-      message: "git user.name が未設定",
-      hint: 'git config --global user.name "Your Name" で設定してください（cc-room の identity に使用）',
+      message: t("val.git_no_name"),
+      hint: t("val.git_no_name_hint"),
     };
   } catch {
     return {
       ok: false,
-      message: "git が見つかりません",
-      hint: "git をインストールしてください",
+      message: t("val.git_missing"),
+      hint: t("val.git_hint"),
     };
   }
 }

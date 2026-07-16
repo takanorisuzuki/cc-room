@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { homedir, platform } from "node:os";
 import { execFileSync } from "node:child_process";
 import { resolveCcRoomDir } from "./paths.js";
+import { t } from "./i18n.js";
 
 const CC_ROOM_DIR = resolveCcRoomDir();
 
@@ -71,11 +72,11 @@ function registerLaunchd(): void {
 
   try {
     execFileSync("launchctl", ["load", plistPath], { stdio: "pipe" });
-    console.log(`         launchd に登録しました: ${plistPath}`);
+    console.log(t("svc.launchd_ok", { path: plistPath }));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.log(`  \x1b[33m⚠ launchd 登録に失敗しました: ${msg}\x1b[0m`);
-    console.log(`    手動で登録: launchctl load ${plistPath}`);
+    console.log(t("svc.launchd_fail", { msg }));
+    console.log(t("svc.launchd_manual", { path: plistPath }));
   }
 }
 
@@ -112,11 +113,11 @@ WantedBy=default.target
   try {
     execFileSync("systemctl", ["--user", "daemon-reload"], { stdio: "pipe" });
     execFileSync("systemctl", ["--user", "enable", "--now", "cc-room-daemon"], { stdio: "pipe" });
-    console.log(`         systemd に登録しました: ${servicePath}`);
+    console.log(t("svc.systemd_ok", { path: servicePath }));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.log(`  \x1b[33m⚠ systemd 登録に失敗しました: ${msg}\x1b[0m`);
-    console.log(`    手動で登録: systemctl --user enable --now cc-room-daemon`);
+    console.log(t("svc.systemd_fail", { msg }));
+    console.log(t("svc.systemd_manual"));
   }
 }
 
@@ -127,18 +128,18 @@ export async function registerService(): Promise<void> {
   } else if (os === "linux") {
     registerSystemd();
   } else {
-    console.log(`  \x1b[33m⚠ ${os} での自動起動登録はサポートされていません。手動で cc-room-daemon を起動してください。\x1b[0m`);
+    console.log(t("svc.unsupported", { os }));
   }
 
   // サービス起動確認
   const pidPath = join(CC_ROOM_DIR, "daemon.pid");
   if (!existsSync(pidPath)) {
-    console.log("         daemon の起動を待機中...");
+    console.log(t("svc.waiting"));
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
   if (existsSync(pidPath)) {
-    console.log("         daemon が起動しました");
+    console.log(t("svc.started"));
   } else {
-    console.log("  \x1b[33m⚠ daemon の自動起動確認できませんでした。手動で cc-room-daemon を実行してください。\x1b[0m");
+    console.log(t("svc.start_unconfirmed"));
   }
 }
