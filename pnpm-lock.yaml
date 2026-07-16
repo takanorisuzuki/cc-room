@@ -80,9 +80,6 @@ importers:
 
   packages/setup:
     dependencies:
-      '@cc-room/shared':
-        specifier: workspace:*
-        version: link:../shared
       yaml:
         specifier: ^2.4.0
         version: 2.9.0

@@ -2,53 +2,83 @@
 
 import { validateAll, printResults } from "./validators.js";
 import { install } from "./installer.js";
+import { uninstall } from "./uninstaller.js";
+import { getLocale, resolveLocale, setLocale, t } from "./i18n.js";
 
-async function main() {
-  console.log("\n  🏠 setup-cc-room v0.2.0\n");
+const VERSION = "0.2.4";
 
-  console.log("  Preflight checks を実行中...");
+function stripLangArgs(argv: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--lang" || a === "--locale") {
+      i++; // skip value
+      continue;
+    }
+    if (a.startsWith("--lang=") || a.startsWith("--locale=")) continue;
+    out.push(a);
+  }
+  return out;
+}
+
+function printHelp(): void {
+  console.log(t("cli.help", { version: VERSION }));
+}
+
+async function runInstall(): Promise<void> {
+  console.log(`\n  🏠 setup-cc-room v${VERSION}\n`);
+
+  console.log(t("cli.running_preflight"));
   const { passed, results } = validateAll();
   printResults(results);
 
   if (!passed) {
-    console.log("  \x1b[31m前提条件を満たしていません。上記の問題を解決してから再実行してください。\x1b[0m\n");
+    console.log(t("cli.preflight_failed"));
     process.exit(1);
   }
 
-  console.log("  \x1b[32m全チェック通過。インストールを開始します。\x1b[0m\n");
+  console.log(t("cli.preflight_ok"));
 
-  await install();
+  await install(getLocale());
 
   console.log(`
-  \x1b[32m✅ セットアップが完了しました！\x1b[0m
-
-  cc-room の使い方:
-
-  【会議室を開く場合】
-    1. Claude Code を再起動（MCP と Hooks を有効化）
-    2. /room open <name>  ← 会議室を開く（PIN 発行）
-    3. 表示される部屋名と PIN を相手に口頭や DM で伝える
-    4. 相手が /room join <name> <PIN> を実行すれば参加完了
-
-  【招待された場合】
-    1. Claude Code を再起動
-    2. /room join <name> <PIN>  ← 相手から受け取った値を入力
-
-  【日常操作】
-    /room             … ホワイトボードを見る
-    /private          … 状態表示、手元/公開の切替（on|off|share|drop）
-
-  ⚠️  cc-room は自動で相手に通知しません。
-      部屋名と PIN は自分で相手に伝えてください。
-
-  接続後は同じ WiFi（LAN）内にいる必要があります。
-  リモートワーク時は Tailscale などの VPN をご利用ください。
-
-  ドキュメント: https://github.com/takanorisuzuki/cc-room
+${t("cli.install_done")}
+${t("cli.install_guide")}
 `);
 }
 
+async function runUninstall(): Promise<void> {
+  console.log(`\n  🏠 setup-cc-room v${VERSION} — uninstall\n`);
+  await uninstall();
+  console.log(`
+${t("cli.uninstall_done")}
+
+${t("cli.restart_claude")}
+`);
+}
+
+async function main(): Promise<void> {
+  setLocale(resolveLocale(process.argv, process.env));
+  const args = stripLangArgs(process.argv.slice(2));
+  const arg = args[0];
+
+  if (arg === "--help" || arg === "-h" || arg === "help") {
+    printHelp();
+    return;
+  }
+  if (arg === "uninstall" || arg === "--uninstall") {
+    await runUninstall();
+    return;
+  }
+  if (arg && arg !== "install") {
+    console.error(t("cli.unknown_arg", { arg }));
+    printHelp();
+    process.exit(1);
+  }
+  await runInstall();
+}
+
 main().catch((err) => {
-  console.error("  \x1b[31mエラー:\x1b[0m", err instanceof Error ? err.message : err);
+  console.error(t("cli.error"), err instanceof Error ? err.message : err);
   process.exit(1);
 });

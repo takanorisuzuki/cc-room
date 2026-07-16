@@ -194,6 +194,19 @@ export class PeerConnector extends EventEmitter {
     return conn?.ws.readyState === WebSocket.OPEN || false;
   }
 
+  /** 退室時: 再接続せずに当該ルームの outbound を切る */
+  disconnectRoom(roomId: string): void {
+    for (const [key, conn] of [...this.connections.entries()]) {
+      if (conn.roomId !== roomId) continue;
+      conn.skipReconnect = true;
+      this.cleanupConnection(conn);
+      if (conn.ws.readyState === WebSocket.OPEN || conn.ws.readyState === WebSocket.CONNECTING) {
+        conn.ws.close(1000, "Left room");
+      }
+      this.connections.delete(key);
+    }
+  }
+
   private cleanupConnection(conn: PeerConnection): void {
     if (conn.pingInterval) {
       clearInterval(conn.pingInterval);

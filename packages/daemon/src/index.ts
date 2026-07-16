@@ -761,7 +761,9 @@ async function main() {
       if (!meta) {
         return { ok: false, message: "Room not found" };
       }
+      peerConnector.disconnectRoom(body.room_id);
       server.unregisterRoom(body.room_id);
+      discovery.removeRoomAdvertisement(body.room_id);
       notifier.notify({ type: "room_closed", room: meta.name });
       const remaining = storage.listRooms().filter((r) => r.id !== body.room_id).map((r) => r.id);
       showState.onRoomLeave(body.room_id, remaining);

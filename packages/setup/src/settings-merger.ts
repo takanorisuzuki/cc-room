@@ -1,50 +1,78 @@
 import { readFileSync, writeFileSync, existsSync, copyFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { execFileSync } from "node:child_process";
+import { t } from "./i18n.js";
+import { resolveCcRoomDir } from "./paths.js";
 
 const SETTINGS_PATH = join(homedir(), ".claude", "settings.json");
 
-const CC_ROOM_HOOKS = {
-  UserPromptSubmit: [
-    {
-      hooks: [
-        {
-          type: "command",
-          command: "cc-room-daemon hook user-prompt-submit",
-        },
-      ],
-    },
-  ],
-  PostToolUse: [
-    {
-      matcher: "Write|Edit",
-      hooks: [
-        {
-          type: "command",
-          command: "cc-room-daemon hook post-tool-use",
-        },
-      ],
-    },
-  ],
-  Stop: [
-    {
-      hooks: [
-        {
-          type: "command",
-          command: "cc-room-daemon hook session-stop",
-        },
-      ],
-    },
-  ],
-};
+/** Claude Code hooks / MCP から呼ぶ daemon の絶対パスを解決する */
+export function resolveDaemonCommand(env: NodeJS.ProcessEnv = process.env): string {
+  const bundled = join(resolveCcRoomDir(env), "bin", "cc-room-daemon");
+  if (existsSync(bundled)) return bundled;
+  try {
+    const which = execFileSync("which", ["cc-room-daemon"], {
+      encoding: "utf-8",
+      stdio: "pipe",
+    }).trim();
+    if (which) return which;
+  } catch {
+    // ignore
+  }
+  return bundled;
+}
 
-const CC_ROOM_MCP = {
-  "cc-room": {
-    type: "stdio",
-    command: "cc-room-daemon",
-    args: ["mcp"],
-  },
-};
+function isCcRoomHookCommand(command?: string): boolean {
+  if (!command) return false;
+  return command.includes("cc-room-daemon") && command.includes("hook");
+}
+
+export function buildCcRoomHooks(daemonBin: string) {
+  return {
+    UserPromptSubmit: [
+      {
+        hooks: [
+          {
+            type: "command",
+            command: `${daemonBin} hook user-prompt-submit`,
+          },
+        ],
+      },
+    ],
+    PostToolUse: [
+      {
+        matcher: "Write|Edit",
+        hooks: [
+          {
+            type: "command",
+            command: `${daemonBin} hook post-tool-use`,
+          },
+        ],
+      },
+    ],
+    Stop: [
+      {
+        hooks: [
+          {
+            type: "command",
+            command: `${daemonBin} hook session-stop`,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+export function buildCcRoomMcp(daemonBin: string) {
+  return {
+    "cc-room": {
+      type: "stdio",
+      command: daemonBin,
+      args: ["mcp"],
+    },
+  };
+}
 
 export function mergeSettings(): void {
   let settings: Record<string, unknown> = {};
@@ -54,33 +82,80 @@ export function mergeSettings(): void {
     try {
       settings = JSON.parse(readFileSync(SETTINGS_PATH, "utf-8")) as Record<string, unknown>;
     } catch {
-      console.log("  \x1b[33m⚠ settings.json のパースに失敗しました。バックアップを作成して上書きします。\x1b[0m");
+      console.log(t("settings.parse_fail_backup"));
       copyFileSync(SETTINGS_PATH, SETTINGS_PATH + ".backup");
       settings = {};
     }
   }
 
-  // hooks のマージ（既存エントリを保持して追加）
+  const daemonBin = resolveDaemonCommand();
+  const ccRoomHooks = buildCcRoomHooks(daemonBin);
+  const ccRoomMcp = buildCcRoomMcp(daemonBin);
+
   const existingHooks = (settings.hooks as Record<string, unknown[]> | undefined) ?? {};
   const mergedHooks: Record<string, unknown[]> = { ...existingHooks };
 
-  for (const [event, newEntries] of Object.entries(CC_ROOM_HOOKS)) {
+  for (const [event, newEntries] of Object.entries(ccRoomHooks)) {
     const existing = (mergedHooks[event] as unknown[]) ?? [];
-    // cc-room エントリが重複登録されないよう、既存の cc-room hook を削除してから追加
     const filtered = existing.filter((e) => {
       const entry = e as { hooks?: Array<{ command?: string }> };
-      return !entry.hooks?.some((h) => h.command?.startsWith("cc-room-daemon hook"));
+      return !entry.hooks?.some((h) => isCcRoomHookCommand(h.command));
     });
     mergedHooks[event] = [...filtered, ...newEntries];
   }
 
-  // mcpServers のマージ
   const existingMcp = (settings.mcpServers as Record<string, unknown> | undefined) ?? {};
-  const mergedMcp = { ...existingMcp, ...CC_ROOM_MCP };
+  const mergedMcp = { ...existingMcp, ...ccRoomMcp };
 
   settings.hooks = mergedHooks;
   settings.mcpServers = mergedMcp;
 
   writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n", { mode: 0o644 });
-  console.log(`         ${SETTINGS_PATH} を更新しました`);
+  console.log(t("settings.updated", { path: SETTINGS_PATH }));
+}
+
+/** settings.json から cc-room の hooks / mcpServers を除去（他設定は保持） */
+export function stripCcRoomFromSettings(
+  settings: Record<string, unknown>,
+): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...settings };
+
+  const existingHooks = (settings.hooks as Record<string, unknown[]> | undefined) ?? {};
+  const strippedHooks: Record<string, unknown[]> = {};
+  for (const [event, entries] of Object.entries(existingHooks)) {
+    strippedHooks[event] = (entries ?? []).filter((e) => {
+      const entry = e as { hooks?: Array<{ command?: string }> };
+      return !entry.hooks?.some((h) => isCcRoomHookCommand(h.command));
+    });
+  }
+  if (Object.keys(existingHooks).length > 0 || Object.keys(strippedHooks).length > 0) {
+    next.hooks = strippedHooks;
+  }
+
+  const existingMcp = (settings.mcpServers as Record<string, unknown> | undefined) ?? {};
+  if (Object.keys(existingMcp).length > 0) {
+    const { ["cc-room"]: _removed, ...rest } = existingMcp;
+    next.mcpServers = rest;
+  }
+
+  return next;
+}
+
+export function unmergeSettings(): void {
+  if (!existsSync(SETTINGS_PATH)) {
+    console.log(t("settings.skip_missing", { path: SETTINGS_PATH }));
+    return;
+  }
+
+  let settings: Record<string, unknown>;
+  try {
+    settings = JSON.parse(readFileSync(SETTINGS_PATH, "utf-8")) as Record<string, unknown>;
+  } catch {
+    console.log(t("settings.parse_fail_skip"));
+    return;
+  }
+
+  const next = stripCcRoomFromSettings(settings);
+  writeFileSync(SETTINGS_PATH, JSON.stringify(next, null, 2) + "\n", { mode: 0o644 });
+  console.log(t("settings.stripped", { path: SETTINGS_PATH }));
 }

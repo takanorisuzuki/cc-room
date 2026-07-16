@@ -1,153 +1,195 @@
 # cc-room
 
-> ホワイトボードのある会議室に、各自が自分の Claude を連れて入る。
+> Bring your own Claude into a meeting room with a shared whiteboard.
 
-各エンジニアが自分の Claude Code で自分のペースで作業しながら、**公開中**（Private OFF）ならサマリー・成果物が自動でホワイトボード（Primary ルーム）に出る。手元の作業は `/private on` で誰にも見えない。`@name` で人間同士も直接やりとりできる。
+Each engineer works in their own Claude Code at their own pace. While **Live** (Private OFF), summaries and artifacts appear automatically on the whiteboard (Primary room). Local work stays invisible with `/private on`. Humans can mention each other with `@name`.
 
 ```
-既存ツール = 「1つのAIを複数人で操作する」 or 「複数のAIを協調させる」
-cc-room    = 「各自のAIが同じ会議室にいて、ホワイトボードを通じて連携する」
+Typical tools = “many people drive one AI” or “many AIs coordinate”
+cc-room       = “each person’s AI shares a room via a whiteboard”
 ```
+
+[日本語版 README](./README.ja.md)
 
 ---
 
-## このプロジェクトについて
+## Why cc-room now?
 
-個人的に作っていた実験プロジェクトです。
+There is **no generally available official multiplayer** for Claude Code yet.  
+cc-room is an unofficial tool that uses only official extension points (Hooks / MCP / Slash Commands) so LAN teams can get a “meeting room” experience **today**.
 
-- **2026年6月上旬**に「各自の Claude Code を同じ会議室で連携させる」というアイデアを構想・実装開始
-- **2026年6月〜7月初旬**にかけて、mDNS + WebSocket による LAN 内連携、`/private` による公開/手元の切替、チームメモリ（v0.3）まで一通り動く状態に到達
+- **Experience**: each Claude in the same room (whiteboard sync)
+- **Simple**: one-command setup; no external server; nothing sent to the cloud
+- **Privacy**: `/private` toggles local vs public; raw transcripts and private tool results stay out
 
-その後、Claude Code 本体にマルチプレイヤー機能が公式リリースされ、ほぼ同じコンセプトが本家で実現されました。個人で作っていたものが実際に動くところまで来ていたので、記録と参考のために非公式プロジェクトとして公開します。今後は本家の機能が使われていくはずで、これはアーカイブ的な位置づけです。
+Started as a personal experiment; published so you can try it and bring it to your team.
 
 ---
 
-## インストール
+## Quick Start
 
 ```bash
 npx setup-cc-room
 ```
 
-これだけ。Claude Code を開いて `/room open my-room` で始められる。
+Japanese UI and slash commands:
+
+```bash
+npx setup-cc-room --lang ja
+# or: CC_ROOM_LANG=ja npx setup-cc-room
+```
+
+Open Claude Code, then:
+
+```
+/room open my-room          # create a room (PIN is issued)
+```
+
+Teammates on the same LAN:
+
+```
+/room join my-room <PIN>    # join
+```
+
+The whiteboard syncs automatically.
+
+### Uninstall
+
+```bash
+npx setup-cc-room uninstall
+```
+
+Stops the daemon (launchd/systemd), removes slash commands, strips cc-room from `settings.json`, and deletes `~/.cc-room`. Restart Claude Code afterward.
+
+From source:
+
+```bash
+git clone https://github.com/takanorisuzuki/cc-room.git
+cd cc-room && pnpm install && pnpm build
+pnpm --filter setup-cc-room run pack:vendor
+node packages/setup/dist/index.js
+# Japanese: node packages/setup/dist/index.js --lang ja
+# Uninstall: node packages/setup/dist/index.js uninstall
+```
 
 ---
 
-## 使い方
+## Usage
 
 ```
-/room open auth-feature     # 会議室を作る（PIN が発行される。Primary になる）
-/room join auth-feature <PIN>  # チームメイトが入室（2部屋目は Watch = Read Only）
-/room switch other-room     # Primary（執筆するルーム）を切替
-/room                       # ホワイトボードを見る
-/room remember "JWT方式: パターンB、TTL 3日"   # 付箋を貼る
+/room open auth-feature        # create a room (becomes Primary)
+/room join auth-feature <PIN>  # join (2nd+ rooms default to Watch = read-only)
+/room switch other-room        # switch Primary (the room you write to)
+/room                          # view the whiteboard
+/room remember "JWT: pattern B, TTL 3 days"   # sticky note
 
-/private on                 # 手元モード（執筆は pending に蓄積、誰にも見えない）
-/private off                # 公開へ戻る（pending があれば毎回 share/drop を選択）
+/private on                    # local mode (work accumulates as pending)
+/private off                   # back to public (always choose share/drop if pending)
 
-/show "TTLは3日にすべき"    # Primary へメッセージ投稿
-/show skill deep-research   # スキルを部屋に共有
-/show claude-md             # CLAUDE.md を共有
+/show "TTL of 3 days may be too long"   # post to Primary
+/show skill deep-research               # share a skill
+/show claude-md                         # share CLAUDE.md
 
-/room leave                 # 退室
+/room leave                    # leave
 ```
 
-入室するとホワイトボードの内容（サマリー・成果物・メッセージ）が自動で同期される。
+After joining, whiteboard content (summaries, artifacts, messages) syncs automatically.
 
-- **Primary** — 執筆するルーム（1つだけ）。サマリー・成果物・Dream はここへ流れる
-- **Watch** — 見るだけ（Read Only）。2部屋目以降の join はデフォルト Watch
-- **公開中**（Private OFF）— サマリー・成果物が Primary へ自動配信される状態
-- **`/private on`** — 手元モード。戻すときは毎回 share（送る）/ drop（捨てる）を選ぶ（自動 flush なし）
+- **Primary** — the one room you write to. Summaries, artifacts, and Dream go here
+- **Watch** — read-only. Joining a second room defaults to Watch
+- **Live** (Private OFF) — summaries/artifacts auto-publish to Primary
+- **`/private on`** — local mode; returning always requires share (send) or drop (discard)
 
-### @メンション（人間同士のやりとり）
+### @mentions (human-to-human)
 
-Claude Code の入力欄で `@` から始めると、**人間に直接**届く（Claude への指示ではない）。
+Starting input with `@` sends to **people**, not as an instruction to Claude.
 
-| 構文 | 届く先 |
+| Syntax | Recipients |
 |---|---|
-| `@akira JWT終わったよ` | akira だけ |
-| `@here ランチ行く人いる？` | 公開中（Primary かつ Private OFF）のメンバー全員 |
-| `@all デプロイ完了しました` | 部屋の全員（Private ON/OFF 問わず） |
+| `@akira JWT is done` | akira only |
+| `@here anyone for lunch?` | everyone Live (Primary + Private OFF) |
+| `@all deploy finished` | everyone in the room (regardless of Private) |
 
-- 送信者が公開中（Private OFF）なら作業サマリー付きで届く（Private ON / Watch ではサマリーなし、本文のみ）
-- 受信側はステータスラインに `📬 N件` が表示される
-- 次に Claude に話しかけると、未読メンションがプロンプト先頭にバナーとして差し込まれ、Claude も把握する
-- `@dataclass` など部屋にいない名前は通常入力として Claude に渡る（誤検出しない）
+- If the sender is Live, a work summary is attached (Private ON / Watch: body only)
+- Recipients see `📬 N` on the status line
+- Next time they talk to Claude, unread mentions are injected as a banner so Claude sees them too
+- Names not in the room (e.g. `@dataclass`) pass through as normal Claude input
 
 ---
 
-## 何が共有されるか
+## What is shared?
 
-| データ | 公開中（Private OFF） | Private ON |
+| Data | Live (Private OFF) | Private ON |
 |---|---|---|
-| 会話サマリー（技術作業） | リアルタイム自動（Primary のみ） | pending に蓄積（非公開） |
-| 生成ファイル (Write/Edit) | リアルタイム自動（Primary のみ） | pending に蓄積（非公開） |
-| `/show "msg"` のメッセージ | 即時 | 確認後に投稿 |
-| `@メンション` 本文 | 宛先のみ（送信者サマリー付き） | 宛先のみ（サマリーなし） |
-| `/room remember` のメモ | 即時 | 即時 |
-| 会話の生テキスト | 常に非公開 | 常に非公開 |
-| プライベートツール結果 | 自動除外 | 非公開 |
+| Conversation summary (technical work) | Auto realtime (Primary only) | Pending (private) |
+| Generated files (Write/Edit) | Auto realtime (Primary only) | Pending (private) |
+| `/show "msg"` | Immediate | After confirm |
+| `@mention` body | Recipients only (+ sender summary) | Recipients only (no summary) |
+| `/room remember` notes | Immediate | Immediate |
+| Raw conversation text | Never shared | Never shared |
+| Private tool results | Auto-excluded | Private |
 
-配信条件は「Primary ルーム AND Private OFF AND プライバシーフィルタ通過」。Watch ルームへは自動執筆しない。
+Publish requires Primary **and** Private OFF **and** passing the privacy filter. Watch rooms are never auto-written.
 
 ---
 
-## 仕組み
+## How it works
 
 ```
-Alice の Claude Code
-  └─ session jsonl を監視 → 差分サマリ生成 → WebSocket (LAN) →
-                                                Bob の ~/.cc-room/ に保存
-                                                └─ MCP tool で取得 → Bob の Claude Code が文脈を持った状態で回答
+Alice’s Claude Code
+  └─ watch session jsonl → summarize deltas → WebSocket (LAN) →
+                                                saved under Bob’s ~/.cc-room/
+                                                └─ MCP tools → Bob’s Claude answers with context
 ```
 
-- **LAN 内のみ**: mDNS + WebSocket。外部サーバーなし、クラウド送信なし
-- **Claude Code 無改造**: Hooks / MCP Server / Slash Commands の公式拡張ポイントのみ使用
-- **各自のAPIキー**: Anthropic API は各自のキーで各自が呼ぶ
-- **部屋の認証**: 名前 + 6桁 PIN → HKDF で HMAC キー導出
-- **中間サマリー**: 公開中（Private OFF）が 30 分以上続くと自動でサマリーを共有
+- **LAN only**: mDNS + WebSocket; no external server; no cloud upload
+- **No Claude Code forks**: Hooks / MCP / Slash Commands only
+- **Own API keys**: each person calls Anthropic with their own key
+- **Room auth**: name + 6-digit PIN → HMAC key via HKDF
+- **Interim summaries**: after 30+ minutes Live, a summary is shared automatically
 
-### デモシナリオ
+### Demo flow
 
 ```
 akira: /room open auth-feature
 yuki:  /room join auth-feature <PIN>
-akira: 「JWT設計書を作って」→ design.md 生成（公開中なので自動配信）
-yuki:  design.md が届く → room_context() でレビュー
-yuki:  /show "TTL 3日は長いかも"
-akira: "@yuki 認証テストどこまで進んだ？"
-yuki:  次のターンでバナー表示 → Claude も把握
+akira: “Write a JWT design doc” → design.md (auto-shared while Live)
+yuki:  receives design.md → room_context() review
+yuki:  /show "TTL of 3 days may be long"
+akira: "@yuki how far are auth tests?"
+yuki:  next turn shows a banner → Claude sees it too
 ```
 
 ---
 
-## 部屋のライフサイクル
+## Room lifecycle
 
-- **デーモン停止 (Ctrl+C)**: 全部屋から退出してプロセス終了。ゴミが残らない
-- **Idle 自動クリーンアップ**: 全ピア切断後 30 秒で部屋を自動削除（セーフティネット）
-- **作成直後の部屋**: まだ誰も接続していないため idle 対象外
+- **Stop daemon (Ctrl+C)**: leave all rooms, then exit (no leftover garbage)
+- **Idle cleanup**: auto-delete a room 30s after all peers disconnect
+- **Brand-new rooms**: not idle-cleaned until someone has connected
 
 ---
 
-## 要件
+## Requirements
 
 - Node.js 20+
 - Claude Code
-- 同一 LAN（WiFi / 有線）内のチームメイト
+- Teammates on the same LAN (Wi‑Fi / ethernet)
 
-### リモートワークで使いたい場合
+### Remote use
 
-- **Tailscale（推奨）**: `tailscale up` するだけで仮想的に同一 LAN になる
-- **IP 直指定**: `/room join` の発見結果に表示される IP で直接接続も可能
+Designed for the same LAN; a VPN that provides a shared LAN also works (e.g. Tailscale). Optional.
 
 ---
 
-## 開発
+## Development
 
 ```bash
-pnpm install          # 依存インストール
-pnpm build            # TypeScript コンパイル
-pnpm dev              # watch モードでビルド
-pnpm test             # テスト実行
+pnpm install
+pnpm build
+pnpm --filter setup-cc-room run pack:vendor
+pnpm dev
+pnpm test
 ```
 
 ---

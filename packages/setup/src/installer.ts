@@ -13,12 +13,16 @@ import { fileURLToPath } from "node:url";
 import { stringify } from "yaml";
 import { mergeSettings } from "./settings-merger.js";
 import { registerService } from "./register-service.js";
+import { resolveDaemonSource } from "./daemon-resolver.js";
+import { resolveCcRoomDir } from "./paths.js";
+import { type Locale, t } from "./i18n.js";
 
-const CC_ROOM_DIR = join(homedir(), ".cc-room");
+const CC_ROOM_DIR = resolveCcRoomDir();
 const BIN_DIR = join(CC_ROOM_DIR, "bin");
 const CONFIG_PATH = join(CC_ROOM_DIR, "config.yaml");
 const COMMANDS_DIR = join(homedir(), ".claude", "commands");
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
+const SETUP_PACKAGE_ROOT = join(THIS_DIR, "..");
 
 function getGitUserName(): string {
   try {
@@ -28,43 +32,46 @@ function getGitUserName(): string {
   }
 }
 
-function findDaemonBin(): string | null {
+export function resolveCommandSources(setupPackageRoot: string, locale: Locale): string | null {
   const candidates = [
-    join(THIS_DIR, "..", "vendor", "daemon", "dist", "index.js"),
-    join(THIS_DIR, "..", "..", "daemon", "dist", "index.js"),
-    join(THIS_DIR, "..", "..", "..", "node_modules", "@cc-room", "daemon", "dist", "index.js"),
+    join(setupPackageRoot, "vendor", "commands", "room", locale),
+    join(setupPackageRoot, "..", "commands", "room", locale),
+    // legacy flat layout (pre-i18n)
+    join(setupPackageRoot, "vendor", "commands", "room"),
+    join(setupPackageRoot, "..", "commands", "room"),
   ];
-  for (const c of candidates) {
-    if (existsSync(c)) return c;
+  for (const dir of candidates) {
+    if (existsSync(join(dir, "room.md"))) return dir;
   }
   return null;
 }
 
-export async function install(): Promise<void> {
-  console.log("  [1/5] ~/.cc-room/bin/ のセットアップ...");
+export async function install(locale: Locale = "en"): Promise<void> {
+  console.log(t("install.step1", { dir: CC_ROOM_DIR }));
   mkdirSync(BIN_DIR, { recursive: true });
 
-  const daemonSrc = findDaemonBin();
+  const daemonSrc = resolveDaemonSource(SETUP_PACKAGE_ROOT);
   const daemonDest = join(BIN_DIR, "cc-room-daemon");
 
   if (daemonSrc) {
     copyFileSync(daemonSrc, daemonDest);
     chmodSync(daemonDest, 0o755);
-    console.log(`         コピー完了: ${daemonDest}`);
+    console.log(t("install.copied", { path: daemonDest }));
   } else {
     const globalBin = spawnSync("which", ["cc-room-daemon"], { encoding: "utf-8" });
     if (globalBin.status === 0) {
-      console.log(`         グローバルインストール確認済み: ${globalBin.stdout.trim()}`);
+      console.log(t("install.global_ok", { path: globalBin.stdout.trim() }));
     } else {
-      console.log("  \x1b[33m⚠ cc-room-daemon バイナリが見つかりません。npm install -g @cc-room/daemon でインストールしてください。\x1b[0m");
+      console.log(`  \x1b[33m⚠ ${t("daemon.missing")}\x1b[0m`);
     }
   }
 
-  console.log("  [2/5] ~/.cc-room/config.yaml の生成...");
+  console.log(t("install.step2", { path: CONFIG_PATH }));
   if (!existsSync(CONFIG_PATH)) {
     const identity = getGitUserName();
     const config = {
       identity: { name: identity },
+      ui: { locale },
       network: { port: 7331, http_port: 7332 },
       trust: [],
       sessions: { default_mode: "approve", share_files: true, share_context: true },
@@ -77,22 +84,22 @@ export async function install(): Promise<void> {
       storage: { max_bytes: 524288000, artifact_ttl_days: 30, context_ttl_days: 7, message_ttl_days: 14 },
     };
     writeFileSync(CONFIG_PATH, stringify(config), { mode: 0o600 });
-    console.log(`         生成完了: ${CONFIG_PATH} (identity: ${identity})`);
+    console.log(t("install.config_created", { path: CONFIG_PATH, identity }));
   } else {
-    console.log(`         スキップ: ${CONFIG_PATH} は既に存在します`);
+    console.log(t("install.config_skip", { path: CONFIG_PATH }));
   }
 
-  console.log("  [3/5] コマンドファイルの配置...");
+  console.log(t("install.step3", { locale }));
   mkdirSync(COMMANDS_DIR, { recursive: true });
   const commandFiles = ["room.md", "private.md", "show.md"];
   const legacyFiles = ["invite.md", "join.md", "leave.md", "files.md", "remember.md", "share.md"];
+  const commandsSrcDir = resolveCommandSources(SETUP_PACKAGE_ROOT, locale);
+  if (!commandsSrcDir) {
+    throw new Error(`Command source directory not found for locale=${locale}`);
+  }
   for (const cmd of commandFiles) {
-    const src = [
-      join(THIS_DIR, "..", "vendor", "commands", "room", cmd),
-      join(THIS_DIR, "..", "..", "commands", "room", cmd),
-      join(THIS_DIR, "..", "commands", "room", cmd),
-    ].find(existsSync);
-    if (!src) throw new Error(`Command source file not found: ${cmd}`);
+    const src = join(commandsSrcDir, cmd);
+    if (!existsSync(src)) throw new Error(`Command source file not found: ${src}`);
     copyFileSync(src, join(COMMANDS_DIR, cmd));
   }
   for (const legacy of legacyFiles) {
@@ -101,11 +108,11 @@ export async function install(): Promise<void> {
       unlinkSync(dest);
     }
   }
-  console.log(`         ${commandFiles.length} ファイルを ${COMMANDS_DIR} に配置しました`);
+  console.log(t("install.commands_ok", { count: commandFiles.length, dir: COMMANDS_DIR }));
 
-  console.log("  [4/5] .claude/settings.json の更新...");
+  console.log(t("install.step4"));
   mergeSettings();
 
-  console.log("  [5/5] OS自動起動の登録...");
+  console.log(t("install.step5"));
   await registerService();
 }

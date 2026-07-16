@@ -4,6 +4,7 @@ node_modules/
 
 # Build output
 dist/
+dist-bundle/
 build/
 packages/setup/vendor/
 *.js.map

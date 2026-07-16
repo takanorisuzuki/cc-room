@@ -3,22 +3,23 @@ import { Summarizer } from "../../summarizer.js";
 
 describe("Summarizer", () => {
   it("API キーなしでフォールバックモードになる", async () => {
-    // ANTHROPIC_API_KEY が未設定の環境でテスト
     const originalKey = process.env.ANTHROPIC_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
 
-    const summarizer = new Summarizer("claude-haiku-4-5-20251001", "invalid-key");
-    const result = await summarizer.summarize([
-      { role: "user", content: "JWT の設計をお願いします" },
-      { role: "assistant", content: "パターンA, B, C を比較します。パターンBが推奨です。" },
-    ]);
+    try {
+      // 無効キーは 401 になり、リトライせずフォールバックする
+      const summarizer = new Summarizer("claude-haiku-4-5-20251001", "invalid-key");
+      const result = await summarizer.summarize([
+        { role: "user", content: "JWT の設計をお願いします" },
+        { role: "assistant", content: "パターンA, B, C を比較します。パターンBが推奨です。" },
+      ]);
 
-    // フォールバックで何かしら返る
-    expect(result).toBeTruthy();
-    expect(result.length).toBeGreaterThan(0);
-
-    if (originalKey) process.env.ANTHROPIC_API_KEY = originalKey;
-  });
+      expect(result).toBeTruthy();
+      expect(result.length).toBeGreaterThan(0);
+    } finally {
+      if (originalKey) process.env.ANTHROPIC_API_KEY = originalKey;
+    }
+  }, 15_000);
 
   it("空の turns で空文字を返す", async () => {
     const summarizer = new Summarizer("claude-haiku-4-5-20251001");
