@@ -22,7 +22,12 @@ const COMMANDS_SRC = join(REPO_ROOT, "packages", "commands", "room");
 const VENDOR = join(SETUP_ROOT, "vendor");
 
 function run(cmd, args, cwd) {
-  const r = spawnSync(cmd, args, { cwd, stdio: "inherit", shell: false });
+  // Windows では pnpm が .cmd のため shell 経由が必要
+  const r = spawnSync(cmd, args, {
+    cwd,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
   if (r.status !== 0) {
     throw new Error(`Command failed (${r.status}): ${cmd} ${args.join(" ")}`);
   }

@@ -87,6 +87,11 @@ export function removeCcRoomData(ccRoomDir: string): void {
 }
 
 export function stopOrphanDaemon(): void {
+  if (platform() === "win32") {
+    // サービス登録は未対応。残骸プロセスはベストエフォートで終了を試みる
+    spawnSync("taskkill", ["/F", "/IM", "cc-room-daemon.exe"], { stdio: "pipe" });
+    return;
+  }
   spawnSync("pkill", ["-f", "cc-room-daemon"], { stdio: "pipe" });
 }
 

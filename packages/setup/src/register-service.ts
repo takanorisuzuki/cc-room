@@ -18,11 +18,20 @@ function getDaemonBinPath(): string {
   return join(CC_ROOM_DIR, "bin", "cc-room-daemon");
 }
 
+/** launchd plist の <string> 用に XML 特殊文字をエスケープする */
+export function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function ccRoomHomeEnvXml(): string {
   if (!process.env.CC_ROOM_HOME) return "";
   return `
     <key>CC_ROOM_HOME</key>
-    <string>${process.env.CC_ROOM_HOME}</string>`;
+    <string>${escapeXml(process.env.CC_ROOM_HOME)}</string>`;
 }
 
 function registerLaunchd(): void {
@@ -42,16 +51,16 @@ function registerLaunchd(): void {
   <string>dev.ccroom.daemon</string>
   <key>ProgramArguments</key>
   <array>
-    <string>${daemonBin}</string>
+    <string>${escapeXml(daemonBin)}</string>
   </array>
   <key>KeepAlive</key>
   <true/>
   <key>RunAtLoad</key>
   <true/>
   <key>StandardOutPath</key>
-  <string>${logPath}</string>
+  <string>${escapeXml(logPath)}</string>
   <key>StandardErrorPath</key>
-  <string>${logPath}</string>
+  <string>${escapeXml(logPath)}</string>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
@@ -89,8 +98,9 @@ function registerSystemd(): void {
   mkdirSync(join(CC_ROOM_DIR, "logs"), { recursive: true });
   mkdirSync(serviceDir, { recursive: true });
 
+  // スペース入りパスでも systemd が正しく解釈できるようクォートする
   const envLine = process.env.CC_ROOM_HOME
-    ? `Environment=CC_ROOM_HOME=${process.env.CC_ROOM_HOME}\n`
+    ? `Environment="CC_ROOM_HOME=${process.env.CC_ROOM_HOME}"\n`
     : "";
 
   const unit = `[Unit]
