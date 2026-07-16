@@ -1,8 +1,9 @@
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { fork } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
 import { stringify } from "yaml";
+import { encodeProjectDir } from "../../session-reader.js";
 
 /** E2E 用 daemon config。差分は overrides で渡す（privacy.public_tools、dream 等） */
 export function createDaemonConfig(
@@ -149,4 +150,49 @@ export async function createRoomPair(
   });
 
   return { roomId: createRes.room_id, pin: createRes.pin };
+}
+
+/** SessionWatcher 向けに Claude Code 風 jsonl を書く（fallback 要約の素材） */
+export function writeSessionJsonl(
+  claudeHome: string,
+  cwd: string,
+  sessionId: string,
+  userText: string,
+  assistantText: string,
+): string {
+  const projDir = join(claudeHome, "projects", encodeProjectDir(cwd));
+  mkdirSync(projDir, { recursive: true });
+  const path = join(projDir, `${sessionId}.jsonl`);
+  const lines = [
+    JSON.stringify({ type: "user", message: userText, timestamp: new Date().toISOString() }),
+    JSON.stringify({
+      type: "assistant",
+      message: assistantText,
+      timestamp: new Date().toISOString(),
+    }),
+  ];
+  writeFileSync(path, lines.join("\n") + "\n");
+  return path;
+}
+
+/** /context に member の要約が現れるまで待つ */
+export async function waitForMemberContext(
+  httpPort: number,
+  member: string,
+  includes: string,
+  maxMs = 20000,
+): Promise<string> {
+  let found = "";
+  await waitForCondition(async () => {
+    const ctx = (await httpGet(httpPort, "/context")) as Record<string, Record<string, string>>;
+    for (const members of Object.values(ctx)) {
+      const summary = members[member];
+      if (summary && summary.includes(includes)) {
+        found = summary;
+        return true;
+      }
+    }
+    return false;
+  }, maxMs);
+  return found;
 }
