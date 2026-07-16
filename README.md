@@ -48,14 +48,14 @@ Claude Code を開き:
 
 これでホワイトボードが同期される。
 
-> **npm にまだ載っていない場合**（`npx` が 404 のとき）は、リポジトリからインストールしてください:
->
-> ```bash
-> git clone https://github.com/takanorisuzuki/cc-room.git
-> cd cc-room && pnpm install && pnpm build
-> pnpm --filter setup-cc-room run pack:vendor
-> node packages/setup/dist/index.js
-> ```
+開発者向け（ソースから）:
+
+```bash
+git clone https://github.com/takanorisuzuki/cc-room.git
+cd cc-room && pnpm install && pnpm build
+pnpm --filter setup-cc-room run pack:vendor
+node packages/setup/dist/index.js
+```
 
 ---
 
