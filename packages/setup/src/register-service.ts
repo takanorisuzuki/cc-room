@@ -3,20 +3,10 @@ import { join } from "node:path";
 import { homedir, platform } from "node:os";
 import { execFileSync } from "node:child_process";
 import { resolveCcRoomDir } from "./paths.js";
+import { resolveDaemonCommand } from "./settings-merger.js";
 import { t } from "./i18n.js";
 
 const CC_ROOM_DIR = resolveCcRoomDir();
-
-function getDaemonBinPath(): string {
-  // インストール済みの場合はグローバルバイナリ
-  try {
-    const which = execFileSync("which", ["cc-room-daemon"], { encoding: "utf-8", stdio: "pipe" }).trim();
-    if (which) return which;
-  } catch {
-    // ignore
-  }
-  return join(CC_ROOM_DIR, "bin", "cc-room-daemon");
-}
 
 /** launchd plist の <string> 用に XML 特殊文字をエスケープする */
 export function escapeXml(text: string): string {
@@ -37,7 +27,7 @@ function ccRoomHomeEnvXml(): string {
 function registerLaunchd(): void {
   const plistDir = join(homedir(), "Library", "LaunchAgents");
   const plistPath = join(plistDir, "dev.ccroom.daemon.plist");
-  const daemonBin = getDaemonBinPath();
+  const daemonBin = resolveDaemonCommand();
   const logPath = join(CC_ROOM_DIR, "logs", "daemon.log");
 
   mkdirSync(join(CC_ROOM_DIR, "logs"), { recursive: true });
@@ -92,7 +82,7 @@ function registerLaunchd(): void {
 function registerSystemd(): void {
   const serviceDir = join(homedir(), ".config", "systemd", "user");
   const servicePath = join(serviceDir, "cc-room-daemon.service");
-  const daemonBin = getDaemonBinPath();
+  const daemonBin = resolveDaemonCommand();
   const logPath = join(CC_ROOM_DIR, "logs", "daemon.log");
 
   mkdirSync(join(CC_ROOM_DIR, "logs"), { recursive: true });

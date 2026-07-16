@@ -18,6 +18,3 @@ export function resolveDaemonSource(setupPackageRoot: string): string | null {
   }
   return null;
 }
-
-export const DAEMON_MISSING_HINT =
-  "cc-room-daemon not found. In the repo run `pnpm --filter setup-cc-room run pack:vendor`, or use the npm setup-cc-room package.";
