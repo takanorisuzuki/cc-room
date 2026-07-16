@@ -9,26 +9,53 @@
 cc-room    = 「各自のAIが同じ会議室にいて、ホワイトボードを通じて連携する」
 ```
 
----
+### English Overview
 
-## このプロジェクトについて
-
-個人的に作っていた実験プロジェクトです。
-
-- **2026年6月上旬**に「各自の Claude Code を同じ会議室で連携させる」というアイデアを構想・実装開始
-- **2026年6月〜7月初旬**にかけて、mDNS + WebSocket による LAN 内連携、`/private` による公開/手元の切替、チームメモリ（v0.3）まで一通り動く状態に到達
-
-その後、Claude Code 本体にマルチプレイヤー機能が公式リリースされ、ほぼ同じコンセプトが本家で実現されました。個人で作っていたものが実際に動くところまで来ていたので、記録と参考のために非公式プロジェクトとして公開します。今後は本家の機能が使われていくはずで、これはアーカイブ的な位置づけです。
+cc-room lets each teammate bring their own Claude Code into a shared LAN “meeting room.” While you’re public (Private OFF), summaries and artifacts appear on a shared whiteboard; `/private on` keeps work local until you choose to share or drop. No external server — mDNS + WebSocket on your network. A practical multiplayer option for Claude Code teams until an official one ships.
 
 ---
 
-## インストール
+## なぜ今 cc-room か
+
+Claude Code 向けの**公式マルチプレイヤーは、まだ一般提供されていません**。  
+cc-room は公式拡張ポイント（Hooks / MCP / Slash Commands）だけを使い、**今すぐ**同一 LAN のチームで「会議室」体験を使える非公式ツールです。
+
+- **体験**: 各自の Claude が同じ部屋にいる（ホワイトボード連携）
+- **簡単**: セットアップは一発。外部サーバーなし、クラウド送信なし
+- **プライバシー**: `/private` で手元と公開を切替。会話の生テキストやプライベートツール結果は出さない
+
+個人実験から始まったプロジェクトですが、動くものを「試して・チームに持ち込める」形で公開しています。
+
+---
+
+## Quick Start
 
 ```bash
 npx setup-cc-room
 ```
 
-これだけ。Claude Code を開いて `/room open my-room` で始められる。
+Claude Code を開き:
+
+```
+/room open my-room          # 会議室を作る（PIN が発行される）
+```
+
+同じ LAN のチームメイトは:
+
+```
+/room join my-room <PIN>    # 入室
+```
+
+これでホワイトボードが同期される。
+
+> **npm にまだ載っていない場合**（`npx` が 404 のとき）は、リポジトリからインストールしてください:
+>
+> ```bash
+> git clone https://github.com/takanorisuzuki/cc-room.git
+> cd cc-room && pnpm install && pnpm build
+> pnpm --filter setup-cc-room run pack:vendor
+> node packages/setup/dist/index.js
+> ```
 
 ---
 
@@ -134,10 +161,9 @@ yuki:  次のターンでバナー表示 → Claude も把握
 - Claude Code
 - 同一 LAN（WiFi / 有線）内のチームメイト
 
-### リモートワークで使いたい場合
+### リモートで使いたい場合
 
-- **Tailscale（推奨）**: `tailscale up` するだけで仮想的に同一 LAN になる
-- **IP 直指定**: `/room join` の発見結果に表示される IP で直接接続も可能
+同一 LAN が前提だが、VPN で仮想 LAN にできれば動く（例: Tailscale）。必須ではない。
 
 ---
 
@@ -146,6 +172,7 @@ yuki:  次のターンでバナー表示 → Claude も把握
 ```bash
 pnpm install          # 依存インストール
 pnpm build            # TypeScript コンパイル
+pnpm --filter setup-cc-room run pack:vendor  # setup 用に daemon/commands を同梱
 pnpm dev              # watch モードでビルド
 pnpm test             # テスト実行
 ```
