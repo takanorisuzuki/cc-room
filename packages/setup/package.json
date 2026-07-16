@@ -6,14 +6,17 @@
   "author": "Takanori Suzuki",
   "repository": {
     "type": "git",
-    "url": "https://github.com/takanorisuzuki/cc-room.git",
+    "url": "git+https://github.com/takanorisuzuki/cc-room.git",
     "directory": "packages/setup"
   },
   "type": "module",
   "bin": {
-    "setup-cc-room": "./dist/index.js"
+    "setup-cc-room": "dist/index.js"
   },
-  "files": ["dist", "vendor"],
+  "files": [
+    "dist",
+    "vendor"
+  ],
   "scripts": {
     "build": "tsup src/index.ts src/installer.ts src/settings-merger.ts src/register-service.ts src/validators.ts src/daemon-resolver.ts src/paths.ts --format esm --dts",
     "dev": "tsup src/index.ts --format esm --watch",
