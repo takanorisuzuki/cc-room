@@ -26,6 +26,36 @@ Started as a personal experiment; published so you can try it and bring it to yo
 
 ---
 
+## Why we built this
+
+cc-room aims at **pair-programming-like, real-time context sharing**—a LAN-only “virtual meeting room.” Safety comes first: nothing leaves your network, while chat, artifacts, and in-progress work context can still flow naturally.
+
+### Problems we wanted to solve
+
+1. **Opening a PR just to ask for advice is heavy**  
+   You often want a second opinion before commit, while work is still WIP. Draft PRs and formal review requests raise the bar. In cc-room, **context from the work you’re doing now** can reach teammates—“I’m writing this right now…” without ceremony.
+
+2. **Not screen-sharing—real parallel work**  
+   Many tools (Claude Squad, tmate, VS Code Live Share) center on “looking at the same screen,” so someone usually has to stop typing. cc-room lets **each person keep their own pace** while **context syncs automatically**—nobody has to pause for the others.
+
+3. **Tool switching breaks flow**  
+   Opening Slack invites distraction and “what was I doing?” moments. cc-room stays **inside the terminal / editor**, so the coding flow doesn’t get broken.
+
+4. **The “same air” of a hackathon, virtualized**  
+   What makes a team retreat fun is everyone working on the same thing together. cc-room recreates that feeling through **shared context**, not a shared physical room.
+
+5. **A healthier relationship with AI**  
+   Not “make the AI do the job,” but **build with AI and people**. Humans make the creative calls; AI accelerates them. Context understanding joins human conversation—**humans stay in charge**.
+
+6. **Company code is sensitive**  
+   A codebase is often the most confidential asset you have. Cloud-first collaboration can feel wrong by instinct. cc-room stays **on the LAN**—data does not leave the building. Anthropic API calls use **each person’s existing key**.
+
+### In short
+
+Born from the sense that AI coding had drifted toward “hand it to the AI,” cc-room is a **human-centered** collaboration tool—especially useful **inside companies and on sensitive work**. That idea still holds: try it below and bring it to your team.
+
+---
+
 ## Quick Start
 
 ```bash
