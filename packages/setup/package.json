@@ -1,6 +1,6 @@
 {
   "name": "setup-cc-room",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Install cc-room — bring your Claude Code into a shared LAN meeting room",
   "license": "MIT",
   "author": "Takanori Suzuki",

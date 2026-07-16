@@ -96,6 +96,8 @@ const en: Dict = {
   "svc.systemd_ok": "         Registered with systemd: {path}",
   "svc.systemd_fail": "  \x1b[33m⚠ systemd registration failed: {msg}\x1b[0m",
   "svc.systemd_manual": "    Manual: systemctl --user enable --now cc-room-daemon",
+  "svc.cc_room_home_unsafe":
+    "  \x1b[33m⚠ CC_ROOM_HOME contains characters unsafe for systemd (newline/quote); omitting from unit file\x1b[0m",
   "svc.unsupported":
     "  \x1b[33m⚠ Auto-start is not supported on {os}. Start cc-room-daemon manually.\x1b[0m",
   "svc.waiting": "         Waiting for daemon to start...",
@@ -223,6 +225,8 @@ const ja: Dict = {
   "svc.systemd_ok": "         systemd に登録しました: {path}",
   "svc.systemd_fail": "  \x1b[33m⚠ systemd 登録に失敗しました: {msg}\x1b[0m",
   "svc.systemd_manual": "    手動で登録: systemctl --user enable --now cc-room-daemon",
+  "svc.cc_room_home_unsafe":
+    "  \x1b[33m⚠ CC_ROOM_HOME に systemd で危険な文字（改行/引用符）が含まれるため unit から省略します\x1b[0m",
   "svc.unsupported":
     "  \x1b[33m⚠ {os} での自動起動登録はサポートされていません。手動で cc-room-daemon を起動してください。\x1b[0m",
   "svc.waiting": "         daemon の起動を待機中...",

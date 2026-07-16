@@ -5,7 +5,7 @@ import { install } from "./installer.js";
 import { uninstall } from "./uninstaller.js";
 import { getLocale, resolveLocale, setLocale, t } from "./i18n.js";
 
-const VERSION = "0.2.3";
+const VERSION = "0.2.4";
 
 function stripLangArgs(argv: string[]): string[] {
   const out: string[] = [];

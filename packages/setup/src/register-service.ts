@@ -17,6 +17,16 @@ export function escapeXml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * systemd `Environment="KEY=value"` の value として安全なときだけ返す。
+ * 改行・NUL・二重引用符は unit ディレクティブ注入 / クォート破壊の恐れがある。
+ */
+export function sanitizeSystemdEnvValue(value: string): string | null {
+  if (!value) return null;
+  if (/[\0\n\r"]/.test(value)) return null;
+  return value;
+}
+
 function ccRoomHomeEnvXml(): string {
   if (!process.env.CC_ROOM_HOME) return "";
   return `
@@ -88,10 +98,14 @@ function registerSystemd(): void {
   mkdirSync(join(CC_ROOM_DIR, "logs"), { recursive: true });
   mkdirSync(serviceDir, { recursive: true });
 
-  // スペース入りパスでも systemd が正しく解釈できるようクォートする
-  const envLine = process.env.CC_ROOM_HOME
-    ? `Environment="CC_ROOM_HOME=${process.env.CC_ROOM_HOME}"\n`
-    : "";
+  // スペース入りパスでも systemd が正しく解釈できるようクォートする。
+  // 改行等はディレクティブ注入になり得るので拒否する。
+  const rawHome = process.env.CC_ROOM_HOME;
+  const safeHome = rawHome ? sanitizeSystemdEnvValue(rawHome) : null;
+  if (rawHome && !safeHome) {
+    console.log(t("svc.cc_room_home_unsafe"));
+  }
+  const envLine = safeHome ? `Environment="CC_ROOM_HOME=${safeHome}"\n` : "";
 
   const unit = `[Unit]
 Description=cc-room daemon
